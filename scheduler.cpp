@@ -6,15 +6,15 @@
 
 #include <iostream>
 #include <string>
-#include <map>
 #include <vector>
 #include <time.h>
 #include <random>
 using namespace std;
 
 int numTeams = 4;
-int numWeeks = 2;
+int numWeeks = 4;
 int numFields = 2;
+int weeklyGames = 4;
 bool doubleHeaders = true;
 
 struct Game{
@@ -43,13 +43,14 @@ struct Field{
 
 struct Team{
     int teamNumber;
+    int numGamesPlayed = 0;
     string teamName;
     string prefType;
     int prefDay;
     string prefField;
     int prefTime;
     int lastWeekPlayed = -1;
-    map<int> opponents;
+    vector<int> opponents;
     
     Team(int number, string name, string pref, int day, int time, string field)
             :teamNumber(number),teamName(name),prefType(pref),prefDay(day),
@@ -67,16 +68,18 @@ vector<Field> fields;
 vector<Day> days;
 vector<vector<Day>> weeks;
 
-// find opponent with preference, if none retunes last free, if non returns -1
+// find opponent with preference, if none returnes last free, if non returns -1
 int findOpponent(int weekNum, int pNum, int day, int time, string field){
+    cout << "Find Opp: week, pickTeam, day, time, field : " << weekNum << pNum << day << time << field << endl;
     int lastOpp = -1;
     for(auto k = numTeams-1; k >= 0; k--){
-        
         if(teams[pickOrder[k]].lastWeekPlayed < weekNum &&
                 find(teams[pNum].opponents.begin(),
                 teams[pNum].opponents.end(),
-                teams[pickOrder[k]].teamNumber) !=
+                teams[pickOrder[k]].teamNumber) ==
                 teams[pNum].opponents.end()){
+            if(lastOpp < 0)
+                lastOpp = k;
             if(teams[pickOrder[k]].prefDay & day || teams[pickOrder[k]].prefTime == time ||
                     teams[pickOrder[k]].prefField == field){
             return k;
@@ -88,8 +91,9 @@ int findOpponent(int weekNum, int pNum, int day, int time, string field){
 
 // add both teams to a game, add them as played, update last week played
 void fillInGames(int weekNum, int day, int fNum, int gNum, int oppNum, int pNum){
-    weeks[weekNum][day].fields[fNum].games[gNum].team1 == pNum;
-    weeks[weekNum][day].fields[fNum].games[gNum].team2 == teams[oppNum].teamNumber;
+    cout << "Game: week, day, field, game, t1, t2 : " << weekNum << day << fNum << gNum << pNum << oppNum << endl;
+    weeks[weekNum][day].fields[fNum].games[gNum].team1 = pNum;
+    weeks[weekNum][day].fields[fNum].games[gNum].team2 = teams[oppNum].teamNumber;
     teams[pNum].opponents.push_back(teams[oppNum].teamNumber);
     teams[oppNum].opponents.push_back(teams[pNum].teamNumber);
     teams[pNum].lastWeekPlayed = weekNum;
@@ -98,6 +102,7 @@ void fillInGames(int weekNum, int day, int fNum, int gNum, int oppNum, int pNum)
 
 // --- main ---
 int main(){
+    cout << "\n######################################\n\n";
     srand(time(NULL));
     
     // generate random pick order
@@ -119,10 +124,10 @@ int main(){
     cout << endl;
 
     // creat team objects
-    teams.push_back(Team(0,"Yankes", "Day", 0, 0, Bannerman));
-    teams.push_back(Team(1,"Sox","Day", 1, 0, Bannerman));
-    teams.push_back(Team(2,"Cubs","Time", 0, 0, Bannerman));
-    teams.push_back(Team(3,"Jays","Time", 0, 1, Bannerman));
+    teams.push_back(Team(0,"Yankes", "Day", 0, 0, "Bannerman"));
+    teams.push_back(Team(1,"Sox","Day", 1, 0, "Bannerman"));
+    teams.push_back(Team(2,"Cubs","Day", 1, 0, "Bannerman"));
+    teams.push_back(Team(3,"Jays","Day", 0, 1, "Bannerman"));
     
     // create each field's games and time availability
     fields.push_back(Field(4,"Vic Park", 3));
@@ -162,46 +167,64 @@ int main(){
     
     // update games each week based on pick order and preference
     int currentWeek = 0;
-    int gamesPlanned = 0;
-    int pickIndex = 0;
-    Team tempTeam;
     while(currentWeek < numWeeks){
         cout << "--- Week " << currentWeek << " ---" << endl;
-        
-        while(gamesPlanned < gameCount){
-            cout << "Team " << pickOrder[0] << ", prefers " << teams[pickOrder[0]].prefType << endl;
+        int gamesPlanned = 0;
+        int pickIndex = 0;
+        while(gamesPlanned < weeklyGames){
+            cout << "Team " << pickOrder[pickIndex] << ", prefers " << teams[pickOrder[pickIndex]].prefType << endl;
+            bool gameFound = false;
             // check if the picking team has played yet this week
             if(teams[pickOrder[pickIndex]].lastWeekPlayed < currentWeek){
-                switch(teams[pickOrder[pickIndex]].prefType){
-                    case("Day"):
+                // try and find their preference
+                if(teams[pickOrder[pickIndex]].prefType == "Day"){
                     int day = teams[pickOrder[pickIndex]].prefDay;
                     // check feach field on that day
-                    for(auto i = 0; i < days[day].size(); i++){
+                    for(auto i = 0; i < days[day].fields.size(); i++){
                         // check each game time
                         for(auto j = 0; j < days[day].fields[i].numGames; j++){
                             // if theres a free field
                             if(weeks[currentWeek][day].fields[i].games[j].team1 == -1){
-                                // find opponent
-                                int oppIndex = findOpponent(currentWeek, pickOrder[pickIndex], day,
-                                        days[day].fields[i].games[j].late, days[day].fields[i].name);
-                                // fill in games
-                                fillInGames(currentWeek, day, i, j, k);
+                                // find opponent, prioritising simaler preferences
+                                int oppIndex = findOpponent(currentWeek,
+                                        pickOrder[pickIndex],
+                                        day,days[day].fields[i].games[j].late,
+                                        days[day].fields[i].name);
+                                cout << "oppIndex == " << oppIndex << endl;
+                                // fill in games vs opponent
+                                fillInGames(currentWeek, day, i, j, oppIndex,
+                                        pickOrder[pickIndex]);
                                 gamesPlanned ++;
                                 if(doubleHeaders){
-                                    fillInGames(currentWeek, day, i, j, k);
+                                    fillInGames(currentWeek, day, i, j,
+                                            pickOrder[pickIndex], oppIndex);
                                     gamesPlanned ++;
                                 }
-                                
+                                gameFound = true;
+                                break;
                             }
                         }
+                        if(gameFound)
+                            break;
                     }
-                    
-                    break;
-                    
+                } else if(teams[pickOrder[pickIndex]].prefType == "Time"){
+                    cout << "in time case" << endl;
+                    gamesPlanned ++;
+                    gamesPlanned ++;
+                } else if(teams[pickOrder[pickIndex]].prefType == "Field"){
+                    cout << "in field case" << endl;
+                    gamesPlanned ++;
+                    gamesPlanned ++;
                 }
             }
-            pickOrder ++
+            if(gameFound){
+                int temp = pickOrder[0];
+                pickOrder.erase(pickOrder.begin());
+                pickOrder.push_back(temp);
+            } else
+                pickIndex++;
         }
+        
         currentWeek ++;
     }
     
