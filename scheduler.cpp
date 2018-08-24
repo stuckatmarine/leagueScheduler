@@ -3,14 +3,15 @@
  * - Generate a schedule based on a teams preference
  *   prefered field, time, or day to optimise compatability
  */
-#include <iostream>
-#include <string>
-#include <vector>
-#include <time.h>
-#include <random>
-#include <utility>
-#include <assert.h>
-#include <algorithm>
+#include <iostream>     // couts
+#include <string>       // strings
+#include <vector>       // vectors
+#include <time.h>       // random seed
+#include <random>       // rand
+#include <utility>      // if pair used///
+#include <assert.h>     // assertions
+#include <algorithm>    // if move used///
+#include <fstream>      // write to .csv
 using namespace std;
 
 
@@ -66,9 +67,10 @@ struct Day{
 
 // --- globals ---
 int numTeams = 8;
-int numWeeks = 6;
+int numWeeks = 10;
 int numFields = 2;
 int weeklyGames = 8;
+int maxGamesPerFieldPerDay = 4;
 int maxGamesPerWeek = 2;
 int maxGamesPerTeam = 16;
 int prefsFound; // 1 = pickers Pref, 2 = both prefs
@@ -232,6 +234,14 @@ void addToPickOrder(){
     }
 }
 
+// move x number cells into ofstream
+void indent(ofstream& out, int x){
+    while(x > 0){
+        out << ",";
+        x--;
+    }
+}
+
 // add both teams to a game, add them as played, update last week played
 void fillInGames(int weekNum, int day, int fNum, int gNum, int oppNum, int pNum){
     cout << "Game: week, day, field, game, t1, t2 : " << weekNum << day << fNum << gNum << pNum << oppNum << endl;
@@ -304,7 +314,7 @@ int preferredDay(int currentWeek, int pNum){
                         assert(find(teams[pNum].opponents.begin(),
                                     teams[pNum].opponents.end(),
                                     oppFound) == teams[pNum].opponents.end());
-                        if (oppFound > 0) {
+                        if (oppFound >= 0) {
                             // fill in games vs opponent
                             fillInGames(currentWeek, day, i, j, oppFound, pNum);
                             if (doubleHeaders) {
@@ -334,7 +344,11 @@ int populateWeek(int currentWeek, int numTry = 0){
     while(gamesPlanned < weeklyGames && !pickOrder.empty()) {
         prefsFound = 0;
         assert(pickIndex < numTeams);
-        cout << "Team " << pickOrder[pickIndex] << ", prefers " << teams[pickOrder[pickIndex]].prefType << endl;
+        cout << "Team " << pickOrder[pickIndex] << ", prefers " << teams[pickOrder[pickIndex]].prefType <<
+                "\nopponents thus far: " << endl;
+        for(auto i = 0; i < teams[pickOrder[pickIndex]].opponents.size(); i++)
+            cout << teams[pickOrder[pickIndex]].opponents[i] << " ";
+        cout << endl;
         int oppFound = -1;
         // check if the picking team has played yet this week
         if (teams[pickOrder[pickIndex]].lastWeekPlayed - numTry < currentWeek) {
@@ -411,11 +425,57 @@ int main(){
 
     cout << "\ncleaning up schedule" << endl;
     // put complete opponents list in seasonOpponents for each team
+    int leastPreferred = maxGamesPerTeam;
     for(auto i = 0; i < numTeams; i++) {
         moveOpp(i);
+        if(teams[i].numPreferredGames < leastPreferred)
+            leastPreferred = teams[i].numPreferredGames;
     }
     printf("\nTotals:\nGames = %lu",masterGameVec.size());
+    cout << "\nTeam with the least prefered has " << leastPreferred << " of " <<
+            maxGamesPerTeam << " prefered." << endl;
 
+
+    cout << "\n ---- Saving schedule to .csv ---- " << endl;
+    ofstream out ("schedule.csv");
+    if(!out.is_open())
+        cout << "err opening output file" << endl;
+
+ /*   // print each week
+    for(auto i = 0; i < numWeeks; i++){
+        out << "Week " << i+1 << ",";
+
+        // print each day
+        for(auto j = 0; j < days.size(); j++){
+            out << "Day " << j+1 << ",";
+
+            // print each field
+            for(auto k = 0; k < days[j].fields.size(); k++){
+                out << weeks[i][j].fields[k].name << ",,,,";
+            }
+        }
+        out << "\n";
+
+        indent(out, 1);
+        // for each day
+        for(auto j = 0; j < days.size(); j++){
+
+            // print each game time
+            for(auto k = 0; k < days[j].fields.size(); k++){
+                for(auto n = 0; n < maxGamesPerFieldPerDay; n ++) {
+                    if(weeks[i][j].fields[k].games.begin() + n != weeks[i][j].fields[k].games.end())
+                        out << weeks[i][j].fields[k].games[n].time << ",";
+
+                }
+            }
+
+            out << "\n";
+        }
+
+        out << "\n\n";
+    }
+    out.close();
+*/
     std::cout << "\nhello world\n";
 
     return 0;
