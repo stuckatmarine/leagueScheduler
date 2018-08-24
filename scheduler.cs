@@ -1,0 +1,483 @@
+using System.Windows.Forms;
+using System.Drawing;
+using System.IO;
+using System.Text;
+using System.Collections.Generic;
+using System;
+using System.Diagnostics;
+
+/*
+public class Simple : Form
+{
+	public Simple()
+	{
+		Text = "Simple";
+		Size = new Size(250, 200);
+		CenterToScreen();
+	}
+
+	static public void Main()
+	{
+		Application.Run(new Simple());
+	}
+}
+*/
+
+
+/**
+ * Leauge Schedule Generator
+ * - Generate a schedule based on a teams preference
+ *   prefered field, time, or day to optimise compatability
+ */
+public class Scheduler
+{
+	public  class Game{
+		public int gameNumber;
+		public int late = 0;
+		public string time = "";
+		public string field = "";
+		public int team1 = -1;
+		public int team2 = -1;
+
+		public Game(string ti, int lateGame = 0){
+			this.time = ti;
+			this.late = lateGame;
+		}
+	};
+
+	/**
+	* numTimes = number of games each day
+	* name = field name
+	* daysAvail = bitwise notation for Monday to Sunday
+	*/
+	public class Field{
+		public int numGames = -1;
+		public int daysAvail = -1;
+		public string name;
+		public List<Game> games;
+
+		public Field(int numTimes, string field, int days){
+			this.numGames = numTimes; 
+			this.name = field;
+			this.daysAvail = days;
+			games = new List<Game>();
+		}
+	};
+
+	public class Team{
+		public int teamNumber;
+		public int numGamesPlayed = 0;
+		public int prefDay;
+		public int prefTime;
+		public int lastWeekPlayed = -1;
+		public int numPreferredGames = 0;
+		public string teamName;
+		public string prefType;
+		public string prefField;
+		public List<int> opponents;
+		public List<int> opponentsAllSeason;
+		public List<Game> gamesAllSeaason;
+
+		public Team(int number, string name, string pref, int day, int time, string field){
+			this.teamNumber = number;
+			this.teamName = name;
+			this.prefType = pref;
+			this.prefDay = day;
+			this.prefTime = time;
+			this.prefField = field;
+		}
+	};
+
+	public struct Day{
+		public List<Field> fields;
+	};
+
+	// --- globals ---
+	public Random rand = new Random();
+	public int numTeams = 8;
+	public int numWeeks = 10;
+	public int numFields = 2;
+	public int weeklyGames = 8;
+	public int maxGamesPerFieldPerDay = 4;
+	public int maxGamesPerWeek = 2;
+	public int maxGamesPerTeam = 16;
+	public int prefsFound; // 1 = pickers Pref, 2 = both prefs
+	public bool doubleHeaders = true;
+
+	List<Game> masterGameVec;
+	List<int> pickOrder;
+	List<int> playedAllready;
+	List<int> gotPreferred;
+	List<Team> teams;
+	List<Field> fields;
+	List<Day> days;
+	List<List<Day>> weeks;
+
+	Scheduler(){
+		masterGameVec = new List<Game>();
+		pickOrder = new List<int>();
+		playedAllready = new List<int> ();
+		gotPreferred = new List<int> ();
+		teams = new List<Team> ();
+		fields = new List<Field> ();
+		days = new List<Day> ();
+		weeks = new List<List<Day>> ();
+	}
+
+	// randomize pick order vector
+	void randomizePickOrder() {
+		while(pickOrder.Count > 0)
+			this.pickOrder.RemoveAt(-1);
+
+		while (pickOrder.Count < numTeams) {
+			int randInt = rand.Next() % numTeams;
+			bool found = false;
+			foreach (int num in pickOrder) {
+				if (num == randInt) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				pickOrder.Add(randInt);
+		}
+	}
+
+	// creat team objects
+	public void populateTeams() {
+		teams.Add(new Team(0, "Yankes", "Day", 2, -1, ""));
+		teams.Add(new Team(1, "Sox", "Day", 1, -1, ""));
+		teams.Add(new Team(2, "Cubs", "Day", 1, -1, ""));
+		teams.Add(new Team(3, "Jays", "Day", 2, -1, ""));
+		teams.Add(new Team(4, "Angels", "Day", 2, -1, ""));
+		teams.Add(new Team(5, "Nationals", "Day", 1, -1, ""));
+		teams.Add(new Team(6, "Astros", "Day", 1, -1, ""));
+		teams.Add(new Team(7, "Cardinals", "Day", 2, -1, ""));
+		Debug.Assert(numTeams == teams.Count);
+	}
+
+	// create each field's games and time availability
+	void populateFields() {
+		fields.Add(new Field(4, "Fenway", 3));
+		fields[0].games.Add(new Game("6pm"));
+		fields[0].games.Add(new Game("7:15pm"));
+		fields[0].games.Add(new Game("8:30pm", 1));
+		fields[0].games.Add(new Game("9:45pm", 1));
+		fields.Add(new Field(4, "Wrigley", 3));
+		fields[1].games.Add(new Game("6pm"));
+		fields[1].games.Add(new Game("7:15pm"));
+		fields[1].games.Add(new Game("8:30pm", 1));
+		fields[1].games.Add(new Game("9:45pm", 1));
+
+		Debug.Assert(numFields == fields.Count);
+	}
+
+	// create blank weekly field schedule
+	void populateDays() {
+	int dayFlag = 1;
+	int gameCount = 0; // test
+	for (int dayNum = 0; dayNum < 7; dayNum++) {
+			Day tempDay = new Day();
+		foreach(Field field in fields) {
+			if ((field.daysAvail & dayFlag) > 0) {
+				tempDay.fields.Add(field);
+				gameCount += field.numGames; 
+			}
+		}
+		days.Add(tempDay);
+		dayFlag = dayFlag << 1;
+		}
+	}
+
+	// check day vs bitwise day value
+	bool checkDay(int day, int dayBit){
+	int count = 0;
+	while(count < 7){
+			if((dayBit & 0x01) > 0 && count == day){
+	return true;
+	}
+	count ++;
+	dayBit = dayBit >> 1;
+	}
+	return false;
+	}
+
+	// find opponent with preference, if none returns last free, if non returns -1
+	int findOpponent(int weekNum, int pNum, int day, int time, string field, int numTry = 0){
+		Console.WriteLine( "Find Opp: week, day, time, field, pickTeam, : ", 
+				weekNum, day, time, field, pNum);
+
+		int lastOpp = -1;
+		for(int k = numTeams-1; k >= 0; k--){
+		if(pickOrder[k] != pNum && (teams[pickOrder[k]].lastWeekPlayed - numTry) < weekNum &&
+				teams[pNum].opponents.Find(num => num==pickOrder[k]) == 0 && 					// checked for logic issue
+				teams[pickOrder[k]].numGamesPlayed < maxGamesPerTeam){
+			Debug.Assert(pickOrder[k] != pNum);
+			if(lastOpp < 0)
+				lastOpp = pickOrder[k];
+				if((teams[pickOrder[k]].prefDay & teams[pNum].prefDay) > 0 || teams[pickOrder[k]].prefTime == time ||
+					teams[pickOrder[k]].prefField == field){
+				prefsFound = 2;
+				return pickOrder[k];
+			}
+			prefsFound = 1;
+			}
+		}
+		if(lastOpp < 0 && (numTry + (doubleHeaders?2:1) < maxGamesPerWeek)) {
+			Console.WriteLine("#### no opponents who haven't allready played this week");
+		lastOpp = findOpponent(weekNum, pNum, day, time, field, numTry + 1);
+		}
+
+		return lastOpp;
+	}
+
+	// move opponents list contents to seasonOpp
+	void moveOpp(int pNum) {
+		Console.WriteLine("Team ", pNum, ", shifting opp to season opp");
+		while (teams[pNum].opponents.Count > 0) {
+			int temp = teams[pNum].opponents[teams[pNum].opponents.Count -1];
+			teams[pNum].opponents.RemoveAt(teams[pNum].opponents.Count -1);
+			teams[pNum].opponentsAllSeason.Add(temp);
+		}
+	}
+
+	// move index who got their pref to back of order
+	void movePickPref(int teamNum){
+		Debug.Assert(pickOrder.Find(num => num==teamNum) > 0);
+		gotPreferred.Add(teamNum);
+		pickOrder.Remove (teamNum);
+	}
+
+	// move index who got played but didnt get their pref to back of order
+	void movePickPlayed(int teamNum){
+		Debug.Assert(pickOrder.Find(num => num==teamNum) > 0);
+		playedAllready.Add(teamNum);
+		pickOrder.Remove (teamNum);
+	}
+
+	// move all teams to pick order for next week
+	void addToPickOrder(){
+		Debug.Assert(pickOrder.Count + playedAllready.Count + gotPreferred.Count == numTeams);
+		while(playedAllready.Count > 0) {
+			pickOrder.Add(playedAllready[playedAllready.Count -1]);
+			playedAllready.RemoveAt(playedAllready.Count -1);
+		}
+		while(gotPreferred.Count > 0) {
+			pickOrder.Add(gotPreferred[gotPreferred.Count -1]);
+			gotPreferred.RemoveAt(gotPreferred.Count -1);
+		}
+	}
+
+	// add both teams to a game, add them as played, update last week played
+	void fillInGames(int weekNum, int day, int fNum, int gNum, int oppNum, int pNum){
+		Console.WriteLine("Game: week, day, field, game, t1, t2 : " , weekNum, day, fNum, gNum, pNum, oppNum);
+		Debug.Assert(pNum >= 0 );
+		// updated team1/pNum
+		weeks[weekNum][day].fields[fNum].games[gNum].team1 = pNum;
+		teams[pNum].opponents.Add(teams[oppNum].teamNumber);
+		teams[pNum].lastWeekPlayed = weekNum;
+		teams[pNum].numGamesPlayed ++;
+
+		// check if game is a prefered game for this team
+		if(checkDay(day, teams[pNum].prefDay) || teams[pNum].prefTime ==
+			Convert.ToInt32(weeks[weekNum][day].fields[fNum].games[gNum].late) ||
+		teams[pNum].prefField == weeks[weekNum][day].fields[fNum].name) {
+		teams[pNum].numPreferredGames++;
+		}
+
+		// move opponents played vec to season vec if all opponents played
+		if(teams[pNum].numGamesPlayed % ((numTeams-1) * (doubleHeaders?2:1)) == 0) {
+		moveOpp(pNum);
+		}
+
+		// update team1
+		weeks[weekNum][day].fields[fNum].games[gNum].team2 = teams[oppNum].teamNumber;
+		teams[oppNum].opponents.Add(teams[pNum].teamNumber);
+		teams[oppNum].lastWeekPlayed = weekNum;
+		teams[oppNum].numGamesPlayed ++;
+
+		// check if game is a prefered game for this team
+		if(checkDay(day, teams[oppNum].prefDay) || teams[oppNum].prefTime ==
+			Convert.ToInt32(weeks[weekNum][day].fields[fNum].games[gNum].late) ||
+		teams[oppNum].prefField == weeks[weekNum][day].fields[fNum].name) {
+		teams[oppNum].numPreferredGames++;
+		}
+
+		// move opponents played vec to season vec if all opponents played
+		if(teams[oppNum].numGamesPlayed % ((numTeams-1) * (doubleHeaders?2:1)) == 0) {
+		moveOpp(oppNum);
+		}
+
+		// add to individual team's game vector
+		weeks[weekNum][day].fields[fNum].games[gNum].gameNumber = masterGameVec.Count;
+		weeks[weekNum][day].fields[fNum].games[gNum].field = weeks[weekNum][day].fields[fNum].name;
+		teams[pNum].gamesAllSeaason.Add(weeks[weekNum][day].fields[fNum].games[gNum]);
+		teams[oppNum].gamesAllSeaason.Add(weeks[weekNum][day].fields[fNum].games[gNum]);
+
+		// add to master game vector
+		masterGameVec.Add(weeks[weekNum][day].fields[fNum].games[gNum]);
+	}
+
+	// attempt to find a game for a team with a preferred day
+	int preferredDay(int currentWeek, int pNum){
+	// check each prefday
+	int day = 0;
+	int prefDayVal = teams[pNum].prefDay;
+	int oppFound = -1;
+	while(day < 7) {
+		if((prefDayVal & 0x01) > 0) {
+			// check each field on that day
+			for (int i = 0; i < days[day].fields.Count; i++) {
+				// check each game time
+				for (int j = 0; j < days[day].fields[i].numGames; j++) {
+					// if theres a free field
+					if (weeks[currentWeek][day].fields[i].games[j].team1 == -1) {
+						// find opponent, prioritising simaler preferences
+						oppFound = findOpponent(currentWeek, pNum, day,
+										days[day].fields[i].games[j].late, days[day].fields[i].name);
+						Console.WriteLine("oppTeam == ", oppFound);
+						Debug.Assert(oppFound != pNum);
+						Debug.Assert(teams[pNum].opponents.BinarySearch(oppFound) < 0);
+						if (oppFound >= 0) {
+							// fill in games vs opponent
+							fillInGames(currentWeek, day, i, j, oppFound, pNum);
+							if (doubleHeaders) {
+								// fill in twice
+								fillInGames(currentWeek, day, i, j + 1, pNum, oppFound);
+							}
+						return oppFound;
+						}
+					}
+				}
+				if (oppFound > 0)
+					return oppFound;
+			}
+		}
+	prefDayVal = prefDayVal >> 1;
+	day++;
+	}
+	return oppFound;
+	}
+
+	// attempt to fill in all games for the week up to the weeklyGames limit
+	int populateWeek(int currentWeek, int numTry = 0){
+		Console.WriteLine("\n--- Week ",currentWeek," ---");
+		Debug.Assert(currentWeek < numWeeks);
+		int gamesPlanned = 0;
+		int pickIndex = 0;
+
+		while(gamesPlanned < weeklyGames && pickOrder.Count > 0) {
+			prefsFound = 0;
+			Debug.Assert(pickIndex < numTeams);
+			Console.WriteLine("Team ", pickOrder[pickIndex], ", prefers ", teams[pickOrder[pickIndex]].prefType,
+				"\nopponents thus far: ");
+
+			// print pickOrder
+			for(int i = 0; i < teams[pickOrder[pickIndex]].opponents.Count; i++)
+				Console.WriteLine(Convert.ToString(teams[pickOrder[pickIndex]].opponents[i]), " ");
+			Console.WriteLine ();
+
+			int oppFound = -1;
+			// check if the picking team has played yet this week
+			if (teams[pickOrder[pickIndex]].lastWeekPlayed - numTry < currentWeek) {
+				// try and find their preference
+				if (teams[pickOrder[pickIndex]].prefType == "Day") {
+						Console.WriteLine("Pref Day = ", teams[pickOrder[pickIndex]].prefDay);
+				oppFound = preferredDay(currentWeek, pickOrder[pickIndex]);
+				} else if (teams[pickOrder[pickIndex]].prefType == "Time") {
+					Console.WriteLine("in time case");
+					Debug.Assert(1 == 2); // should never get here
+				} else if (teams[pickOrder[pickIndex]].prefType == "Field") {
+					Console.WriteLine("in field case");
+					Debug.Assert(1 == 2); // should never get here
+				}
+			}
+			else
+				Console.WriteLine("    allready played this week");
+
+			if(oppFound >= 0) {
+				// inc weekly games count
+				gamesPlanned++;
+				if (doubleHeaders) {
+					gamesPlanned++;
+				}
+
+				// move both teams to pref vector
+				if(prefsFound == 2) {
+				movePickPref(oppFound);
+				movePickPref(pickOrder[pickIndex]);
+				}
+				// move only picking team to pref vector
+				else if(prefsFound == 1){
+				movePickPlayed(oppFound);
+				movePickPref(pickOrder[pickIndex]);
+				}
+			}
+			else if(pickIndex < pickOrder.Count)
+				pickIndex++;
+			else
+				break;
+			}
+		return -1;
+	}
+
+	// --- main ---
+	static void Main(string[] args){
+
+		Scheduler sched = new Scheduler();
+
+		sched.randomizePickOrder();
+
+		sched.populateTeams();
+		sched.populateFields();
+		sched.populateDays();
+
+	// test outs
+	//	sched.Debug.Assert(days.Count == 7);
+	//	sched.Debug.Assert(pickOrder.Count == numTeams);
+
+	// fill vector of weeks creating a blank schedule
+		while(sched.weeks.Count -1 < sched.numWeeks){
+			sched.weeks.Add(sched.days);
+		}
+
+	// update games each week based on pick order and preference
+	int currentWeek = 0;
+		while(currentWeek < sched.numWeeks){
+			sched.populateWeek(currentWeek);
+			sched.addToPickOrder();
+		currentWeek ++;
+	}
+
+	Console.WriteLine("\ncleaning up schedule");
+	// put complete opponents list in seasonOpponents for each team
+		int leastPreferred = sched.maxGamesPerTeam;
+		for(int i = 0; i < sched.numTeams; i++) {
+			sched.moveOpp(i);
+			if(sched.teams[i].numPreferredGames < leastPreferred)
+				leastPreferred = sched.teams[i].numPreferredGames;
+	}
+
+		Console.WriteLine("\nTotals:\nGames = %lu",sched.masterGameVec.Count);
+	Console.WriteLine("\nTeam with the least prefered has ",leastPreferred," of ",
+			sched.maxGamesPerTeam," prefered.");
+
+		/*
+	cout << "\n ---- Saving schedule to .csv ---- " << endl;
+		string path = @"/Users/Julia/Desktop/temp.csv";
+
+		if (File.Exists (path))
+			File.Delete (path);
+
+		using (FileStream fs = File.Create (path))
+			fs.Write (fields [0].name, 0, fields [0].name.size ());
+			
+*/
+
+		// Keep the console window open in debug mode.
+		Console.WriteLine("Press any key to exit.");
+		Console.ReadKey();
+
+		Console.WriteLine("Hello World");
+	}
+}
