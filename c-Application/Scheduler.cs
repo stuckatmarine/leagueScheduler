@@ -20,15 +20,14 @@ using System.Runtime.Serialization.Formatters.Binary;
 [Serializable]
 public class Scheduler
 {
-	public static T DeepClone<T>(T obj)
+	public static T DeepClone<T> (T obj)
 	{
-		using (var ms = new MemoryStream())
-		{
-			var formatter = new BinaryFormatter();
-			formatter.Serialize(ms, obj);
+		using (var ms = new MemoryStream ()) {
+			var formatter = new BinaryFormatter ();
+			formatter.Serialize (ms, obj);
 			ms.Position = 0;
 
-			return (T) formatter.Deserialize(ms);
+			return (T)formatter.Deserialize (ms);
 		}
 	}
 
@@ -119,13 +118,13 @@ public class Scheduler
 	public int numTeams = 8;
 	public int numWeeks = 10;
 	public int numFields = 2;
-	public int weeklyGames = 8;
+	public int weeklyGames = 16;
 	public int maxGamesPerFieldPerDay = 4;
 	public int maxGamesPerWeekPerTeam = 2;
 	public int maxGamesPerTeam = 16;
 	public int prefsFound;
 	public int totalGames;
-	public int weeklyTrys = 3;
+	public int weeklyTrys = 8;
 	public int teamsDone = 0;
 	// 1 = pickers Pref, 2 = both prefs
 	public bool doubleHeaders = true;
@@ -176,13 +175,13 @@ public class Scheduler
 	// creat team objects
 	public void populateTeams ()
 	{
-		teams.Add (new Team (0, "Yankes", "Day", 2, -1, ""));
+		teams.Add (new Team (0, "Yankes", "Day", 1, -1, ""));
 		teams.Add (new Team (1, "Sox", "Day", 1, -1, ""));
 		teams.Add (new Team (2, "Cubs", "Day", 1, -1, ""));
 		teams.Add (new Team (3, "Jays", "Day", 2, -1, ""));
-		teams.Add (new Team (4, "Angels", "Day", 2, -1, ""));
+		teams.Add (new Team (4, "Angels", "Day", 1, -1, ""));
 		teams.Add (new Team (5, "Nationals", "Day", 1, -1, ""));
-		teams.Add (new Team (6, "Astros", "Day", 1, -1, ""));
+		teams.Add (new Team (6, "Astros", "Day", 2, -1, ""));
 		teams.Add (new Team (7, "Cardinals", "Day", 2, -1, ""));
 		Debug.Assert (numTeams == teams.Count);
 	}
@@ -240,8 +239,8 @@ public class Scheduler
 	// find opponent with preference, if none returns last free, if non returns -1
 	int findOpponent (int weekNum, int pNum, int day, int time, string field, int numTry = 0)
 	{
-		Console.WriteLine ("Find Opp: week, day, time, field, pickTeam, : "+ 
-			weekNum + day + time + field + pNum);
+		Console.WriteLine ("Find Opp: week, day, time, field, pickTeam, : " +
+		weekNum + day + time + field + pNum);
 
 		int lastOpp = -1;
 		for (int k = 0; k < pickOrder.Count; k++) {
@@ -313,6 +312,16 @@ public class Scheduler
 		}
 	}
 
+	// return true if the gNum is in a preferred pNum game
+	bool checkPreferred (int weekNum, int day, int fNum, int gNum, int pNum)
+	{
+		if (checkDay (day, teams [pNum].prefDay) || teams [pNum].prefTime ==
+		    weeks [weekNum] [day].fields [fNum].games [gNum].late ||
+		    teams [pNum].prefField == weeks [weekNum] [day].fields [fNum].name)
+			return true;
+		return false;
+	}
+
 	// add both teams to a game, add them as played, update last week played
 	void fillInGames (int weekNum, int day, int fNum, int gNum, int oppNum, int pNum)
 	{
@@ -327,11 +336,10 @@ public class Scheduler
 			teamsDone++;
 
 		// check if game is a prefered game for this team
-		if (checkDay (day, teams [pNum].prefDay) || teams [pNum].prefTime ==
-		    Convert.ToInt32 (weeks [weekNum] [day].fields [fNum].games [gNum].late) ||
-		    teams [pNum].prefField == weeks [weekNum] [day].fields [fNum].name) {
+		if (checkPreferred (weekNum, day, fNum, gNum, pNum)) {
 			teams [pNum].numPreferredGames++;
-		}
+		} else
+			Console.WriteLine("non pref");
 
 		// move opponents played vec to season vec if all opponents played
 		if (teams [pNum].numGamesPlayed % ((numTeams - 1) * (doubleHeaders ? 2 : 1)) == 0) {
@@ -347,9 +355,7 @@ public class Scheduler
 			teamsDone++;
 
 		// check if game is a prefered game for this team
-		if (checkDay (day, teams [oppNum].prefDay) || teams [oppNum].prefTime ==
-		    Convert.ToInt32 (weeks [weekNum] [day].fields [fNum].games [gNum].late) ||
-		    teams [oppNum].prefField == weeks [weekNum] [day].fields [fNum].name) {
+		if (checkPreferred (weekNum, day, fNum, gNum, oppNum)) {
 			teams [oppNum].numPreferredGames++;
 		}
 
@@ -493,8 +499,8 @@ public class Scheduler
 
 
 		// test outs
-			Debug.Assert(sched.days.Count == 7);
-			Debug.Assert(sched.pickOrder.Count == sched.numTeams);
+		Debug.Assert (sched.days.Count == 7);
+		Debug.Assert (sched.pickOrder.Count == sched.numTeams);
 
 		// fill vector of weeks creating a blank schedule
 		while (sched.weeks.Count - 1 < sched.numWeeks) {
@@ -505,24 +511,26 @@ public class Scheduler
 			sched.weeks.Add (sched.days);
 			Debug.Assert (sched.weeks [sched.weeks.Count - 1] [0].fields [0].games [0].team1 == -1);
 			if (sched.weeks.Count - 1 < sched.numWeeks) {
-				sched.fields = new List<Field>();
-				sched.days = new List<Day>();
+				sched.fields = new List<Field> ();
+				sched.days = new List<Day> ();
 			}
 		}
 
 		// update games each week based on pick order and preference
 		int currentWeek = 0;
 		int gamesPlayed = 0;
+		int tryNum = 0;
 		while (currentWeek < sched.numWeeks) {
 			// copy the schedule efore filling week
-			Scheduler temp = new Scheduler();
-			temp = ObjectExtensions.Copy(sched);
+			Scheduler temp = new Scheduler ();
+			temp = ObjectExtensions.Copy (sched);
 			gamesPlayed = sched.populateWeek (currentWeek);
 
 			// if week filled correctly
-			if (gamesPlayed == sched.weeklyGames) {
+			if (gamesPlayed == sched.weeklyGames || tryNum == sched.weeklyTrys) {
 				sched.addToPickOrder ();
 				currentWeek++;
+				tryNum = 0;
 			} else if (sched.masterGameVec.Count >= sched.totalGames || sched.teamsDone == sched.numTeams) {
 				Console.WriteLine ("--- All games scheduled --- Week " + currentWeek);
 				break;
@@ -538,6 +546,7 @@ public class Scheduler
 				foreach (int team in sched.pickOrder)
 					Console.Write (team + " ");
 				Console.WriteLine (" &&& Re-trying week");
+				tryNum++;
 			}
 		}
 
@@ -550,10 +559,10 @@ public class Scheduler
 				leastPreferred = sched.teams [i].numPreferredGames;
 		}
 
-		Console.WriteLine ("\nTotals Possible = " + sched.numTeams * sched.maxGamesPerTeam /2 + 
-			"\nGames Scheduled= " + sched.masterGameVec.Count);
+		Console.WriteLine ("\nTotals Possible = " + sched.numTeams * sched.maxGamesPerTeam / 2 +
+		"\nGames Scheduled= " + sched.masterGameVec.Count);
 		Console.WriteLine ("\nTeam with the least prefered has " + leastPreferred + " of " +
-			sched.maxGamesPerTeam + " prefered.");
+		sched.maxGamesPerTeam + " prefered.");
 
 		/*
 	cout << "\n ---- Saving schedule to .csv ---- " << endl;
