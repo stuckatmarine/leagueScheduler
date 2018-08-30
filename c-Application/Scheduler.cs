@@ -17,10 +17,54 @@ using System;
 using System.Diagnostics;
 using System.Runtime.Serialization.Formatters.Binary;
 
-[Serializable]
+
 public class Scheduler
 {
-	public static T DeepClone<T> (T obj)
+
+	// bitwise preference type representation
+	public class PREFTYPE{
+		public const int NA		= -1;
+		public const int NONE 	= 0;
+		public const int DAY 	= 1;
+		public const int TIME 	= 2;
+		public const int FIELD 	= 4;
+	};
+
+	// bitwise day representation
+	public class WEEKDAYS {
+		public const int NA			= -1;
+		public const int MONDAY 	= 1;
+		public const int TUESDAY 	= 2;
+		public const int WEDNESDAY	= 4;
+		public const int THURSDAY	= 8;
+		public const int FRIDAY		= 1;
+		public const int SATURDAY	= 32;
+		public const int SUNDAY		= 64;
+	};
+
+	// bitwise timeslot representation
+	public class TIMESLOT {
+		public const int NA		= -1;
+		public const int EARLY	= 1;
+		public const int LATE	= 2;
+	};
+
+	// bitwise field representation
+	public class FIELDNUM {
+		public const int NA		= -1;
+		public const int ZERO	= 1;
+		public const int ONE	= 2;
+		public const int TWO	= 4;
+		public const int THREE	= 8;
+		public const int FOUR	= 16;
+		public const int FIVE	= 32;
+		public const int SIX	= 64;
+		public const int SEVEN  = 128;
+	};
+
+	// create a deep clone of an object, not by reference
+	// requires [serializable] above class declaration
+/*	public static T DeepClone<T> (T obj)
 	{
 		using (var ms = new MemoryStream ()) {
 			var formatter = new BinaryFormatter ();
@@ -30,21 +74,21 @@ public class Scheduler
 			return (T)formatter.Deserialize (ms);
 		}
 	}
-
+*/
 	// Game to be played
 	public  class Game
 	{
 		public int gameNumber;
-		public int late = 0;
-		public string time = "";
-		public string field = "";
+		public int timeslot = 0;
+		public int field = -1;
 		public int team1 = -1;
 		public int team2 = -1;
+		public string time = "";
 
-		public Game (string ti, int lateGame = 0)
+		public Game (string ti, int ts = 0)
 		{
 			this.time = ti;
-			this.late = lateGame;
+			this.timeslot = ts;
 			this.team1 = -1;
 			this.team2 = -1;
 		}
@@ -58,22 +102,24 @@ public class Scheduler
   	*/
 	public class Field
 	{
+		public int fieldNum = -1;
 		public int numGames = -1;
 		public int daysAvail = -1;
 		public string name;
 		public List<Game> games;
 
-		public Field (int numTimes, string field, int days)
+		public Field (int numTimes, string field, int days, int fNum)
 		{
 			this.numGames = numTimes; 
 			this.name = field;
 			this.daysAvail = days;
+			this.fieldNum = fNum;
 			games = new List<Game> ();
 		}
 	};
 
 	// Each team in the league
-	public class Team
+	public class Team 
 	{
 		public int teamNumber;
 		public int numGamesPlayed = 0;
@@ -81,14 +127,14 @@ public class Scheduler
 		public int prefTime;
 		public int lastWeekPlayed = -1;
 		public int numPreferredGames = 0;
+		public int prefType;
+		public int prefField;
 		public string teamName;
-		public string prefType;
-		public string prefField;
 		public List<int> opponents;
 		public List<int> opponentsAllSeason;
 		public List<Game> gamesAllSeaason;
 
-		public Team (int number, string name, string pref, int day, int time, string field)
+		public Team (int number, string name, int pref, int day, int time, int field)
 		{
 			this.teamNumber = number;
 			this.teamName = name;
@@ -175,26 +221,26 @@ public class Scheduler
 	// creat team objects
 	public void populateTeams ()
 	{
-		teams.Add (new Team (0, "Yankes", "Day", 1, -1, ""));
-		teams.Add (new Team (1, "Sox", "Day", 1, -1, ""));
-		teams.Add (new Team (2, "Cubs", "Day", 1, -1, ""));
-		teams.Add (new Team (3, "Jays", "Day", 2, -1, ""));
-		teams.Add (new Team (4, "Angels", "Day", 1, -1, ""));
-		teams.Add (new Team (5, "Nationals", "Day", 1, -1, ""));
-		teams.Add (new Team (6, "Astros", "Day", 2, -1, ""));
-		teams.Add (new Team (7, "Cardinals", "Day", 2, -1, ""));
+		teams.Add (new Team (0, "Yankes", PREFTYPE.DAY, WEEKDAYS.MONDAY, TIMESLOT.NA, FIELDNUM.NA));
+		teams.Add (new Team (1, "Sox", PREFTYPE.DAY, WEEKDAYS.MONDAY + WEEKDAYS.TUESDAY, TIMESLOT.NA, FIELDNUM.NA));
+		teams.Add (new Team (2, "Cubs", PREFTYPE.DAY, WEEKDAYS.TUESDAY, -1, -1));
+		teams.Add (new Team (3, "Jays", PREFTYPE.DAY, 1, -1, -1));
+		teams.Add (new Team (4, "Angels", PREFTYPE.DAY, 1, -1, -1));
+		teams.Add (new Team (5, "Nationals", PREFTYPE.DAY, 1, -1, -1));
+		teams.Add (new Team (6, "Astros", PREFTYPE.DAY, 1, -1, -1));
+		teams.Add (new Team (7, "Cardinals", PREFTYPE.DAY,WEEKDAYS.TUESDAY, -1, -1));
 		Debug.Assert (numTeams == teams.Count);
 	}
 
 	// create each field's games and time availability
 	void populateFields ()
 	{
-		fields.Add (new Field (4, "Fenway", 3));
+		fields.Add (new Field (4, "Fenway", 3, FIELDNUM.ONE));
 		fields [0].games.Add (new Game ("6pm"));
 		fields [0].games.Add (new Game ("7:15pm"));
 		fields [0].games.Add (new Game ("8:30pm", 1));
 		fields [0].games.Add (new Game ("9:45pm", 1));
-		fields.Add (new Field (4, "Wrigley", 3));
+		fields.Add (new Field (4, "Wrigley", 3, FIELDNUM.TWO));
 		fields [1].games.Add (new Game ("6pm"));
 		fields [1].games.Add (new Game ("7:15pm"));
 		fields [1].games.Add (new Game ("8:30pm", 1));
@@ -237,7 +283,7 @@ public class Scheduler
 	}
 
 	// find opponent with preference, if none returns last free, if non returns -1
-	int findOpponent (int weekNum, int pNum, int day, int time, string field, int numTry = 0)
+	int findOpponent (int weekNum, int pNum, int day, int time, int field, int numTry = 0)
 	{
 		Console.WriteLine ("Find Opp: week, day, time, field, pickTeam, : " +
 		weekNum + day + time + field + pNum);
@@ -255,8 +301,8 @@ public class Scheduler
 				Debug.Assert (pickOrder [k] != pNum);
 				if (lastOpp < 0)
 					lastOpp = pickOrder [k];
-				if ((teams [pickOrder [k]].prefDay & teams [pNum].prefDay) > 0 || teams [pickOrder [k]].prefTime == time ||
-				    teams [pickOrder [k]].prefField == field) {
+				if ((teams [pickOrder [k]].prefDay & day) > 0 || (teams [pickOrder [k]].prefTime & time) > 0 ||
+					(teams [pickOrder [k]].prefField & field) > 0) {
 					prefsFound = 2;
 					return pickOrder [k];
 				}
@@ -264,7 +310,8 @@ public class Scheduler
 			}
 		}
 		if (lastOpp < 0 && (numTry + (doubleHeaders ? 2 : 1) < maxGamesPerWeekPerTeam)) {
-			Console.WriteLine ("#### no opponents who haven't allready played this week");
+			Console.WriteLine ("#### no opponents who haven't allready played this week, " +
+				"trying again within same week");
 			lastOpp = findOpponent (weekNum, pNum, day, time, field, numTry + 1);
 		}
 
@@ -315,9 +362,9 @@ public class Scheduler
 	// return true if the gNum is in a preferred pNum game
 	bool checkPreferred (int weekNum, int day, int fNum, int gNum, int pNum)
 	{
-		if (checkDay (day, teams [pNum].prefDay) || teams [pNum].prefTime ==
-		    weeks [weekNum] [day].fields [fNum].games [gNum].late ||
-		    teams [pNum].prefField == weeks [weekNum] [day].fields [fNum].name)
+		if (checkDay (day, teams [pNum].prefDay) || (teams [pNum].prefTime &
+			weeks [weekNum] [day].fields [fNum].games [gNum].timeslot) > 0 ||
+			(teams [pNum].prefField & weeks [weekNum] [day].fields [fNum].fieldNum) > 0)
 			return true;
 		return false;
 	}
@@ -366,7 +413,7 @@ public class Scheduler
 
 		// add to individual team's game vector
 		weeks [weekNum] [day].fields [fNum].games [gNum].gameNumber = masterGameVec.Count;
-		weeks [weekNum] [day].fields [fNum].games [gNum].field = weeks [weekNum] [day].fields [fNum].name;
+		weeks [weekNum] [day].fields [fNum].games [gNum].field = weeks [weekNum] [day].fields [fNum].fieldNum;
 		teams [pNum].gamesAllSeaason.Add (weeks [weekNum] [day].fields [fNum].games [gNum]);
 		teams [oppNum].gamesAllSeaason.Add (weeks [weekNum] [day].fields [fNum].games [gNum]);
 
@@ -375,39 +422,45 @@ public class Scheduler
 	}
 
 	// attempt to find a game for a team with a preferred day
-	int preferredDay (int currentWeek, int pNum)
+	int gameFinder (int currentWeek, int pNum, int prefType = PREFTYPE.NONE)
 	{
 		// check each prefday
 		int day = 0;
 		int prefDayVal = teams [pNum].prefDay;
 		int oppFound = -1;
 		while (day < 7) {
-			if ((prefDayVal & 0x01) > 0) {
+			if ((prefDayVal & 0x01) > 0 || prefType > 1) {
 				// check each field on that day
 				for (int i = 0; i < days [day].fields.Count; i++) {
 					// check each game time
 					for (int j = 0; j < days [day].fields [i].numGames; j++) {
 						// if theres a free field
-						if (weeks [currentWeek] [day].fields [i].games [j].team1 == -1) {
+						if ((weeks [currentWeek] [day].fields [i].games [j].team1 == -1) && (prefType == PREFTYPE.DAY) || 
+								(prefType == PREFTYPE.TIME && 
+								(weeks [currentWeek] [day].fields [i].games [j].timeslot & teams [pNum].prefTime) > 0)||
+								(prefType == PREFTYPE.FIELD && 
+								(weeks [currentWeek] [day].fields [i].games [j].timeslot & teams [pNum].prefTime) > 0)){
+							
 							// find opponent, prioritising simaler preferences
 							oppFound = findOpponent (currentWeek, pNum, day,
-								days [day].fields [i].games [j].late, days [day].fields [i].name);
+								days [day].fields [i].games [j].timeslot, days [day].fields [i].fieldNum);
 							Console.WriteLine ("Result == " + oppFound);
 							Debug.Assert (oppFound != pNum);
 							Debug.Assert (teams [pNum].opponents.BinarySearch (oppFound) < 0);
-							if (oppFound >= 0) {
-								// fill in games vs opponent
-								fillInGames (currentWeek, day, i, j, oppFound, pNum);
-								if (doubleHeaders) {
-									// fill in twice
-									fillInGames (currentWeek, day, i, j + 1, pNum, oppFound);
-								}
-								return oppFound;
+						} 
+						// exit condition for found game and opponent
+						if (oppFound >= 0 ) {
+							// fill in games vs opponent
+							fillInGames (currentWeek, day, i, j, oppFound, pNum);
+							if (doubleHeaders) {
+								// fill in twice
+								fillInGames (currentWeek, day, i, j + 1, pNum, oppFound);
 							}
+							return oppFound;
 						}
 					}
-					if (oppFound > 0)
-						return oppFound;
+			//		if (oppFound > 0)
+			//			return oppFound;
 				}
 			}
 			prefDayVal = prefDayVal >> 1;
@@ -444,13 +497,13 @@ public class Scheduler
 			// check if the picking team has played yet this week
 			if (teams [pickOrder [pickIndex]].lastWeekPlayed - numTry < currentWeek) {
 				// try and find their preference
-				if (teams [pickOrder [pickIndex]].prefType == "Day") {
+				if (teams [pickOrder [pickIndex]].prefType == PREFTYPE.DAY) {
 					Console.WriteLine ("Pref Day = " + teams [pickOrder [pickIndex]].prefDay);
-					oppFound = preferredDay (currentWeek, pickOrder [pickIndex]);
-				} else if (teams [pickOrder [pickIndex]].prefType == "Time") {
-					Console.WriteLine ("in time case");
-					Debug.Assert (1 == 2); // should never get here
-				} else if (teams [pickOrder [pickIndex]].prefType == "Field") {
+					oppFound = gameFinder (currentWeek, pickOrder [pickIndex], PREFTYPE.DAY);
+				} else if (teams [pickOrder [pickIndex]].prefType == PREFTYPE.TIME) {
+					Console.WriteLine ("Pref Time = " + teams [pickOrder [pickIndex]].prefTime);
+					oppFound = gameFinder (currentWeek, pickOrder [pickIndex], PREFTYPE.TIME);
+				} else if (teams [pickOrder [pickIndex]].prefType == PREFTYPE.FIELD) {
 					Console.WriteLine ("in field case");
 					Debug.Assert (1 == 2); // should never get here
 				}
@@ -490,13 +543,11 @@ public class Scheduler
 		Scheduler sched = new Scheduler ();
 
 		// launch gui window
-		//	Application.Run(new league.LaunchForm());
+			//Application.Run(new league.LaunchForm());
 
 		sched.randomizePickOrder ();
 
 		sched.populateTeams ();
-
-
 
 		// test outs
 		Debug.Assert (sched.days.Count == 7);
