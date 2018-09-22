@@ -8,8 +8,8 @@
  *   By: Mark Duffett, Aug 2018
  */
 
-using System.Windows.Forms;
-using System.Drawing;
+//using System.Windows.Forms;
+//using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
@@ -149,7 +149,7 @@ public class Scheduler
 	};
 
 	// Each day in a week
-	public struct Day
+	public class Day
 	{
 		public List<Field> fields;
 
@@ -229,7 +229,7 @@ public class Scheduler
 		teams.Add (new Team (5, "Nationals", PREFTYPE.DAY, 1, -1, -1));
 		teams.Add (new Team (6, "Astros", PREFTYPE.DAY, 1, -1, -1));
 		teams.Add (new Team (7, "Cardinals", PREFTYPE.DAY,WEEKDAYS.TUESDAY, -1, -1));
-		Debug.Assert (numTeams == teams.Count);
+		Debug.Assert (numTeams == pickOrder.Count);
 	}
 
 	// create each field's games and time availability
@@ -296,7 +296,7 @@ public class Scheduler
 				Console.Write (Convert.ToString (teams [pickOrder [k]].opponents [i]) + " ");
 			Console.WriteLine ();
 			if (pickOrder [k] != pNum && (teams [pickOrder [k]].lastWeekPlayed - numTry) < weekNum &&
-			    teams [pNum].opponents.Find (num => num == pickOrder [k]) == 0 && // checked for logic issue
+			    teams [pNum].opponents.Find (num => num == pickOrder [k]) == -1 && // checked for logic issue
 			    teams [pickOrder [k]].numGamesPlayed < maxGamesPerTeam) {
 				Debug.Assert (pickOrder [k] != pNum);
 				if (lastOpp < 0)
@@ -332,7 +332,7 @@ public class Scheduler
 	// move index who got their pref to back of order
 	void movePickPref (int teamNum)
 	{
-		Debug.Assert (pickOrder.Find (num => num == teamNum) > 0);
+		Debug.Assert (pickOrder.Find (num => num == teamNum) >= 0);
 		gotPreferred.Add (teamNum);
 		pickOrder.Remove (teamNum);
 	}
@@ -543,14 +543,13 @@ public class Scheduler
 		Scheduler sched = new Scheduler ();
 
 		// launch gui window
-			//Application.Run(new league.LaunchForm());
+		// Application.Run(new league.LaunchForm());
 
 		sched.randomizePickOrder ();
 
 		sched.populateTeams ();
 
 		// test outs
-		Debug.Assert (sched.days.Count == 7);
 		Debug.Assert (sched.pickOrder.Count == sched.numTeams);
 
 		// fill vector of weeks creating a blank schedule
