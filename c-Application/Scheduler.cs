@@ -224,7 +224,7 @@ public class Scheduler
 		teams.Add (new Team (0, "Yankes", PREFTYPE.DAY, WEEKDAYS.MONDAY, TIMESLOT.NA, FIELDNUM.NA));
 		teams.Add (new Team (1, "Sox", PREFTYPE.DAY, WEEKDAYS.MONDAY + WEEKDAYS.TUESDAY, TIMESLOT.NA, FIELDNUM.NA));
 		teams.Add (new Team (2, "Cubs", PREFTYPE.DAY, WEEKDAYS.TUESDAY, -1, -1));
-		teams.Add (new Team (3, "Jays", PREFTYPE.DAY, 1, -1, -1));
+		teams.Add (new Team (3, "Jays", PREFTYPE.DAY, 8, -1, -1));
 		teams.Add (new Team (4, "Angels", PREFTYPE.DAY, 1, -1, -1));
 		teams.Add (new Team (5, "Nationals", PREFTYPE.DAY, 1, -1, -1));
 		teams.Add (new Team (6, "Astros", PREFTYPE.DAY, 1, -1, -1));
@@ -295,8 +295,8 @@ public class Scheduler
 			for (int i = 0; i < teams [pickOrder [k]].opponents.Count; i++)
 				Console.Write (Convert.ToString (teams [pickOrder [k]].opponents [i]) + " ");
 			Console.WriteLine ();
-			if (pickOrder [k] != pNum && (teams [pickOrder [k]].lastWeekPlayed - numTry) < weekNum &&
-			    teams [pNum].opponents.Find (num => num == pickOrder [k]) == -1 && // checked for logic issue
+            if (pickOrder [k] != pNum && (teams [pickOrder [k]].lastWeekPlayed - numTry) < weekNum &&
+			    teams [pNum].opponents.FindIndex (num => num == pickOrder [k]) < 0 && // checked for logic issue
 			    teams [pickOrder [k]].numGamesPlayed < maxGamesPerTeam) {
 				Debug.Assert (pickOrder [k] != pNum);
 				if (lastOpp < 0)
@@ -332,7 +332,7 @@ public class Scheduler
 	// move index who got their pref to back of order
 	void movePickPref (int teamNum)
 	{
-		Debug.Assert (pickOrder.Find (num => num == teamNum) >= 0);
+		Debug.Assert (pickOrder.FindIndex (num => num == teamNum) >= 0);
 		gotPreferred.Add (teamNum);
 		pickOrder.Remove (teamNum);
 	}
@@ -340,7 +340,7 @@ public class Scheduler
 	// move index who got played but didnt get their pref to back of order
 	void movePickPlayed (int teamNum)
 	{
-		Debug.Assert (pickOrder.Find (num => num == teamNum) > 0);
+		Debug.Assert (pickOrder.FindIndex(num => num == teamNum) > 0);
 		playedAllready.Add (teamNum);
 		pickOrder.Remove (teamNum);
 	}
@@ -362,9 +362,9 @@ public class Scheduler
 	// return true if the gNum is in a preferred pNum game
 	bool checkPreferred (int weekNum, int day, int fNum, int gNum, int pNum)
 	{
-		if (checkDay (day, teams [pNum].prefDay) || (teams [pNum].prefTime &
-			weeks [weekNum] [day].fields [fNum].games [gNum].timeslot) > 0 ||
-			(teams [pNum].prefField & weeks [weekNum] [day].fields [fNum].fieldNum) > 0)
+		if (checkDay (day, teams [pNum].prefDay) || ((teams [pNum].prefTime >= 0) && (teams[pNum].prefTime  &
+			weeks [weekNum] [day].fields [fNum].games [gNum].timeslot) > 0) ||
+			((teams[pNum].prefField >= 0) && (teams[pNum].prefField & weeks [weekNum] [day].fields [fNum].fieldNum) > 0))
 			return true;
 		return false;
 	}
@@ -446,7 +446,8 @@ public class Scheduler
 								days [day].fields [i].games [j].timeslot, days [day].fields [i].fieldNum);
 							Console.WriteLine ("Result == " + oppFound);
 							Debug.Assert (oppFound != pNum);
-							Debug.Assert (teams [pNum].opponents.BinarySearch (oppFound) < 0);
+                            Debug.Assert (teams [pNum].opponents.FindIndex(num => num == oppFound) < 0);
+
 						} 
 						// exit condition for found game and opponent
 						if (oppFound >= 0 ) {
@@ -577,7 +578,8 @@ public class Scheduler
 			gamesPlayed = sched.populateWeek (currentWeek);
 
 			// if week filled correctly
-			if (gamesPlayed == sched.weeklyGames || tryNum == sched.weeklyTrys) {
+			if (gamesPlayed % sched.weeklyGames == 0 || gamesPlayed >= sched.numTeams * sched.maxGamesPerWeekPerTeam / 2
+                || tryNum == sched.weeklyTrys) {
 				sched.addToPickOrder ();
 				currentWeek++;
 				tryNum = 0;
