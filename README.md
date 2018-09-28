@@ -1,6 +1,7 @@
-# leagueScheduler
-sports league season scheduler, to be c++ ->  C# PC application
+# leagueScheduler, work in progress
 
-C# applicaiton found in c-Application folder, main() located in Schdeuler.cs
+I cannot find a season schedule generation application that takes in a teams preferences or blackout days, so I am making one. It can take in a teams preferred day, time of play, or field and will try and generate the full league schedule with teams playing in their preferred slots as much as possible. It also handles schedules with double headers, and the preffered day can be used inversly filling all days except a non-preferred day if a team has scheduling conflicts.
 
-originial c++ file for algo debugging, scheduler.cpp
+PC application, gui/forms input to an excel output file with the full schedule, and field/each team schedule on their own sheets.
+
+The working C# applicaiton found in c-Application folder.
