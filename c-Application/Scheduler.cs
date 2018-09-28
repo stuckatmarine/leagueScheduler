@@ -177,6 +177,7 @@ public class Scheduler
     public int totalGames;
     public int weeklyTrys = 8;
     public int teamsDone = 0;
+    public int leastPreferred;
     // 1 = pickers Pref, 2 = both prefs
     public bool doubleHeaders = true;
 
@@ -593,5 +594,23 @@ public class Scheduler
                 break;
         }
         return gamesPlanned;
+    }
+
+    public void calcLeastPreferred()
+    {
+        int temp = maxGamesPerTeam;
+        for (int i = 0; i < numTeams; i++)
+        {
+            moveOpp(i);
+            if (teams[i].numPreferredGames < temp)
+                temp = teams[i].numPreferredGames;
+        }
+
+        Console.WriteLine("\nTotals Possible = " + numTeams * maxGamesPerTeam / 2 +
+        "\nGames Scheduled= " + masterGameVec.Count);
+        Console.WriteLine("\nTeam with the least prefered has " + temp + " of " +
+        maxGamesPerTeam + " prefered.");
+
+        leastPreferred = temp;
     }
 }
