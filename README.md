@@ -5,3 +5,14 @@ I cannot find a season schedule generation application that takes in a teams pre
 PC application, gui/forms input to an excel output file with the full schedule, and field/each team schedule on their own sheets.
 
 The working C# applicaiton found in c-Application folder.
+
+Task List Core:
+[x] Schedule based on prefered days
+[]  Gui input forms
+[]  Excel output formatting
+[]  Test
+
+Extra:
+[]  Implement time pref fully
+[]  Implement field pref fully
+[]  Test
