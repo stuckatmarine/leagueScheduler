@@ -8,7 +8,7 @@ The working C# applicaiton found in c-Application folder.
 
 Task List Core:
 [x] Schedule based on prefered days
-[]  Gui input forms
+[x]  Gui input forms
 []  Excel output formatting
 []  Test
 
@@ -16,3 +16,4 @@ Extra:
 []  Implement time pref fully
 []  Implement field pref fully
 []  Test
+

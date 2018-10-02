@@ -16,8 +16,10 @@ namespace Schedulerv1
             Scheduler sched = new Scheduler();
             Scheduler finalSched = new Scheduler();
 
+            league.LaunchForm launchForm = new league.LaunchForm();
+            while (true) ;
+
             generateSched(ref sched, ref finalSched, 20);
-            ////////////////////////////////// Output results to .xls ////////////////////////////////
             
 
             Console.WriteLine("Chosen schedule has least preferred = " + finalSched.leastPreferred);
