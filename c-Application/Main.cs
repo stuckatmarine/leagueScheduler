@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Diagnostics;
 
-
 namespace Schedulerv1
 {
     class _Main : Scheduler
