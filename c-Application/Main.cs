@@ -9,7 +9,6 @@ namespace Schedulerv1
 {
     class _Main : Scheduler
     {
-
         // --- main ---
         static void Main(string[] args)
         {
