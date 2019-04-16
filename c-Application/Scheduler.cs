@@ -164,7 +164,7 @@ public class Scheduler
         }
     };
 
-    // --- globals ---
+    // -------------------- globals ------------------------
     public Random rand = new Random();
     public int numTeams = 8;
     public int numWeeks = 10;
@@ -172,7 +172,7 @@ public class Scheduler
     public int weeklyGames = 16;
     public int maxGamesPerFieldPerDay = 4;
     public int maxGamesPerWeekPerTeam = 2;
-    public int maxGamesPerTeam = 16;
+    public int maxGamesPerTeam = 14;
     public int prefsFound;
     public int totalGames;
     public int weeklyTrys = 8;
