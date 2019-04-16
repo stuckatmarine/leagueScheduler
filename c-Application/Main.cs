@@ -7,13 +7,11 @@ using System.Threading;
 using GemBox.Spreadsheet;
 using System.IO;
 
+
 namespace Schedulerv1
 {
     class _Main : Scheduler
     {
-
-        
-
         // --- main ---
         static void Main(string[] args)
         {
@@ -54,7 +52,6 @@ namespace Schedulerv1
 
             generateSched(ref sched, ref finalSched, 20);
             
-
             Console.WriteLine("Chosen schedule has least preferred = " + finalSched.leastPreferred);
 
             var worksheet = workbook.Worksheets[0];
@@ -91,7 +88,6 @@ namespace Schedulerv1
             ///////////////////////// Get values from gui /////////////////////////////////////////
             // launch gui window
             // Application.Run(new league.LaunchForm());
-
 
             ///////////////////////// Start generating Sched //////////////////////////////////////
             for (int i = 0; i < numTries; i++)
