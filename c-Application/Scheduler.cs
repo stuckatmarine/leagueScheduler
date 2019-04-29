@@ -19,8 +19,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 
 public class Scheduler
-{
-    
+{ 
     // bitwise preference type representation
     public class PREFTYPE
     {
@@ -170,7 +169,6 @@ public class Scheduler
     public int numWeeks = 10;
     public int numFields = 2;
     public int weeklyGames = 16;
-    public int maxGamesPerFieldPerDay = 4;
     public int maxGamesPerWeekPerTeam = 2;
     public int maxGamesPerTeam = 14;
     public int prefsFound;

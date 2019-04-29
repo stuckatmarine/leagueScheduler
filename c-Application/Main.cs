@@ -19,42 +19,36 @@ namespace Schedulerv1
             SpreadsheetInfo.SetLicense("FREE-LIMITED-KEY");
             string curFile = "SchedulerFile.xlsx";
             ExcelFile workbook = new ExcelFile();
-            if (File.Exists(curFile))
-                workbook = ExcelFile.Load(curFile);
-            else
+            try
             {
-                Console.WriteLine("Excel file not found");
-                System.Environment.Exit(1);
+                if (File.Exists(curFile))
+                    workbook = ExcelFile.Load(curFile);
+                else
+                {
+                    Console.WriteLine("Excel file not found");
+                    System.Environment.Exit(1);
+                }
             }
-
-            /*
-            worksheet.Cells[0, 0].Value = "English:";
-            worksheet.Cells[0, 1].Value = "Hello";
-
-            worksheet.Cells[1, 0].Value = "Russian:";
-            // Using UNICODE string.
-            worksheet.Cells[1, 1].Value = new string(new char[] { '\u0417', '\u0434', '\u0440', '\u0430', '\u0432', '\u0441', '\u0442', '\u0432', '\u0443', '\u0439', '\u0442', '\u0435' });
-
-            worksheet.Cells[2, 0].Value = "Chinese:";
-            // Using UNICODE string.
-            worksheet.Cells[2, 1].Value = new string(new char[] { '\u4f60', '\u597d' });
-
-            worksheet.Cells[4, 0].Value = "In order to see Russian and Chinese characters you need to have appropriate fonts on your PC.";
-            worksheet.Cells.GetSubrangeAbsolute(4, 0, 4, 7).Merged = true;
-
-            */
-
+            catch
+            {
+                Console.WriteLine("Error in opting excel file");
+            }
 
             Scheduler sched = new Scheduler();
             Scheduler finalSched = new Scheduler();
 
             //league.LaunchForm launchForm = new league.LaunchForm();
 
-            generateSched(ref sched, ref finalSched, 20);
+            int weeksFilled = generateSched(ref sched, ref finalSched, 20);
             
             Console.WriteLine("Chosen schedule has least preferred = " + finalSched.leastPreferred);
 
-            var worksheet = workbook.Worksheets[0];
+            // Generate Excel output
+            for (int idx = 1; idx < workbook.Worksheets.Count;)
+                workbook.Worksheets.Remove(idx);
+
+            workbook.Worksheets.Add("AllTeams");
+            var worksheet = workbook.Worksheets["AllTeams"];
             int i = 0;
             int j = 0;
             int width = 6;
@@ -66,30 +60,71 @@ namespace Schedulerv1
                 foreach (Scheduler.Game game in team.gamesAllSeaason)
                 {
                     worksheet.Cells[j, i].Value = (j).ToString();
-                    worksheet.Cells[j, i + 1].Value = finalSched.fields[game.field].name;
-                    worksheet.Cells[j, i + 2].Value = finalSched.fields[game.field].games[game.timeslot].time;
+                    worksheet.Cells[j, i + 1].Value = finalSched.fields[getIndex(game.field)].name;
+                    worksheet.Cells[j, i + 2].Value = game.time;
                     worksheet.Cells[j, i + 3].Value = finalSched.teams[game.team1].teamName;
                     worksheet.Cells[j, i + 4].Value = finalSched.teams[game.team2].teamName;
                     j++;
                 }
                 i += width;
-
             }
+            for (int fieldNum = 0; fieldNum < finalSched.numFields; fieldNum++)
+            {
+                workbook.Worksheets.Add(finalSched.fields[fieldNum].name);
+                worksheet = workbook.Worksheets[finalSched.fields[fieldNum].name];
+                i = 0;
+                j = 0;
+                width = 5;
+                int height = finalSched.fields[fieldNum].numGames + 3;
 
-            workbook.Save(curFile);
-
-            //while (true) Thread.Sleep(1000);
+                for (int weekNum = 0; weekNum < weeksFilled; weekNum++)
+                {
+                    j = weekNum * height;
+                    i = 0;
+                    var week = finalSched.weeks[weekNum];
+                    worksheet.Cells[j, i].Value = "Week #";
+                    worksheet.Cells[j, i + 1].Value = (weekNum + 1).ToString();
+                    int dayNum = 0;
+                    foreach (Day day in week)
+                    {
+                        j = weekNum * height + 1;
+                        worksheet.Cells[j, i].Value = "Day " + dayNum.ToString(); ;
+                        worksheet.Cells[j, i + 1].Value = finalSched.fields[fieldNum].name;
+                        j++;
+                        if (day.fields.Count > 0)
+                        {
+                            foreach (Game game in day.fields[fieldNum].games)
+                            {
+                                if (game.team1 != -1)
+                                {
+                                    worksheet.Cells[j, i].Value = game.time;
+                                    worksheet.Cells[j, i + 1].Value = finalSched.teams[game.team1].teamName;
+                                    worksheet.Cells[j, i + 2].Value = "vs";
+                                    worksheet.Cells[j, i + 3].Value = finalSched.teams[game.team1].teamName;
+                                    j++;
+                                }
+                            }
+                            dayNum++;
+                        }
+                        i += width;
+                    }
+                }
+            }
+            try
+            {
+                workbook.Save(curFile);
+            }
+            catch
+            {
+                Console.WriteLine("\nCannot save....Close file\n");
+            }
         }
 
-        static void generateSched(ref Scheduler sched, ref Scheduler finalSched, int numTries)
+        private static int generateSched(ref Scheduler sched, ref Scheduler finalSched, int numTries)
         {
             int[] prefArr = new int[numTries];
+            int currentWeek = 0;
 
-            ///////////////////////// Get values from gui /////////////////////////////////////////
-            // launch gui window
-            // Application.Run(new league.LaunchForm());
-
-            ///////////////////////// Start generating Sched //////////////////////////////////////
             for (int i = 0; i < numTries; i++)
             {
                 sched.randomizePickOrder();
@@ -116,7 +151,6 @@ namespace Schedulerv1
                 }
 
                 // update games each week based on pick order and preference
-                int currentWeek = 0;
                 int gamesPlayed = 0;
                 int tryNum = 0;
                 while (currentWeek < sched.numWeeks)
@@ -171,6 +205,23 @@ namespace Schedulerv1
                 else
                     sched = new Scheduler();
             }
+            return currentWeek;
+        }
+
+        static int getIndex(int i)
+        {
+            if (i == -1)
+                return -1;
+            else if (i == 1)
+                return 0;
+
+            int count = 0;
+            while ((i & 0x2) == 0 | (count > 20))
+            {
+                i = (i >> 1);
+                count++;
+            }
+            return count;
         }
     }
 }
