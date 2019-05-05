@@ -37,9 +37,7 @@ namespace Schedulerv1
             Scheduler sched = new Scheduler();
             Scheduler finalSched = new Scheduler();
 
-            //league.LaunchForm launchForm = new league.LaunchForm();
-
-            int weeksFilled = generateSched(ref sched, ref finalSched, 20);
+            int weeksFilled = generateSched(ref sched, ref finalSched, 20, workbook);
             
             Console.WriteLine("Chosen schedule has least preferred = " + finalSched.leastPreferred);
 
@@ -120,16 +118,18 @@ namespace Schedulerv1
             }
         }
 
-        private static int generateSched(ref Scheduler sched, ref Scheduler finalSched, int numTries)
+        private static int generateSched(ref Scheduler sched, ref Scheduler finalSched, int numTries, ExcelFile workbook)
         {
             int[] prefArr = new int[numTries];
             int currentWeek = 0;
 
             for (int i = 0; i < numTries; i++)
             {
+
+                getInputsFromSheet(sched, workbook);
                 sched.randomizePickOrder();
 
-                sched.populateTeams();
+                // sched.populateTeams();
 
                 // test outs
                 Debug.Assert(sched.pickOrder.Count == sched.numTeams);
@@ -223,5 +223,71 @@ namespace Schedulerv1
             }
             return count;
         }
+
+        private static void getInputsFromSheet(Scheduler sched, ExcelFile workbook)
+        {
+
+            // Get general inputs from sheet
+            var worksheet = workbook.Worksheets["Inputs"];
+            sched.numWeeks = int.Parse(worksheet.Cells[2, 2].GetFormattedValue());
+            sched.weeklyGames = int.Parse(worksheet.Cells[3, 2].GetFormattedValue());
+            sched.maxGamesPerTeam = int.Parse(worksheet.Cells[4, 2].GetFormattedValue());
+            sched.maxGamesPerWeekPerTeam = int.Parse(worksheet.Cells[5, 2].GetFormattedValue());
+            if (worksheet.Cells[3, 6].GetFormattedValue() == "Yes")
+                sched.doubleHeaders = true;
+            else
+                sched.doubleHeaders = false;
+
+            // Get team inputs
+            sched.numTeams = int.Parse(worksheet.Cells["C9"].GetFormattedValue());
+            for (int teamNum = 0; teamNum < sched.numTeams; teamNum++)
+            {
+                int prefType = 0;
+                int timePref = 0;
+                int dayPref = 0;
+                int fieldPref = 0xFF;
+
+                switch (worksheet.Cells[10 + teamNum, 2].GetFormattedValue())
+                {
+                    case "Time":
+                        prefType = PREFTYPE.TIME;
+                        if (worksheet.Cells[10 + teamNum, 3].GetFormattedValue() == "Early")
+                            timePref = TIMESLOT.EARLY;
+                        else
+                            timePref = TIMESLOT.LATE;
+                        dayPref = 0xFF;
+                        break;
+
+                    case "Day":
+                        prefType = PREFTYPE.DAY;
+                        if (worksheet.Cells[10 + teamNum, 4].GetFormattedValue() == "Yes")
+                            dayPref |= WEEKDAYS.MONDAY;
+                        if (worksheet.Cells[10 + teamNum, 5].GetFormattedValue() == "Yes")
+                            dayPref |= WEEKDAYS.TUESDAY;
+                        if (worksheet.Cells[10 + teamNum, 6].GetFormattedValue() == "Yes")
+                            dayPref |= WEEKDAYS.WEDNESDAY;
+                        if (worksheet.Cells[10 + teamNum, 7].GetFormattedValue() == "Yes")
+                            dayPref |= WEEKDAYS.THURSDAY;
+                        if (worksheet.Cells[10 + teamNum, 8].GetFormattedValue() == "Yes")
+                            dayPref |= WEEKDAYS.FRIDAY;
+                        if (worksheet.Cells[10 + teamNum, 9].GetFormattedValue() == "Yes")
+                            dayPref |= WEEKDAYS.SATURDAY;
+                        if (worksheet.Cells[10 + teamNum, 10].GetFormattedValue() == "Yes")
+                            dayPref |= WEEKDAYS.SUNDAY;
+                        timePref = 0xFF;
+                        break;
+
+                    default:
+                        prefType = 0xFF;
+                        timePref = 0xFF;
+                        dayPref = 0xFF;
+                        break;
+                }
+                sched.teams.Add(new Scheduler.Team(teamNum,
+                        worksheet.Cells[11 + teamNum, 1].GetFormattedValue(),
+                        prefType, dayPref, timePref, fieldPref));
+            }
+        }
+
     }
 }

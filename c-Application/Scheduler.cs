@@ -1,4 +1,3 @@
-
 /**
  *   Leauge Schedule Generator
  * 
@@ -38,7 +37,7 @@ public class Scheduler
         public const int TUESDAY = 2;
         public const int WEDNESDAY = 4;
         public const int THURSDAY = 8;
-        public const int FRIDAY = 1;
+        public const int FRIDAY = 16;
         public const int SATURDAY = 32;
         public const int SUNDAY = 64;
     };
@@ -65,19 +64,6 @@ public class Scheduler
         public const int SEVEN = 128;
     };
 
-    // create a deep clone of an object, not by reference
-    // requires [serializable] above class declaration
-    /*	public static T DeepClone<T> (T obj)
-        {
-            using (var ms = new MemoryStream ()) {
-                var formatter = new BinaryFormatter ();
-                formatter.Serialize (ms, obj);
-                ms.Position = 0;
-
-                return (T)formatter.Deserialize (ms);
-            }
-        }
-    */
     // Game to be played
     public class Game
     {
@@ -223,6 +209,7 @@ public class Scheduler
             if (!found)
                 pickOrder.Add(randInt);
         }
+        Debug.Assert(numTeams == pickOrder.Count);
     }
 
     // creat team objects
@@ -342,12 +329,13 @@ public class Scheduler
     public void moveOpp(int pNum)
     {
         Console.WriteLine("Team " + pNum + ", shifting opp to season opp");
-        while (teams[pNum].opponents.Count > 0)
-        {
-            int temp = teams[pNum].opponents[teams[pNum].opponents.Count - 1];
-            teams[pNum].opponents.RemoveAt(teams[pNum].opponents.Count - 1);
-            teams[pNum].opponentsAllSeason.Add(temp);
-        }
+        if (teams.Count > 0)
+            while (teams[pNum].opponents.Count > 0)
+            {
+                int temp = teams[pNum].opponents[teams[pNum].opponents.Count - 1];
+                teams[pNum].opponents.RemoveAt(teams[pNum].opponents.Count - 1);
+                teams[pNum].opponentsAllSeason.Add(temp);
+            }
     }
 
     // move index who got their pref to back of order
