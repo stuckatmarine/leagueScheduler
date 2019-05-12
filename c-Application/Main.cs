@@ -49,19 +49,21 @@ namespace Schedulerv1
             var worksheet = workbook.Worksheets["AllTeams"];
             int i = 0;
             int j = 0;
-            int width = 6;
+            int width = 7;
             foreach (Scheduler.Team team in finalSched.teams){
                 j = 0;
                 worksheet.Cells[0, i].Value = "Week #";
                 worksheet.Cells[0, i + 1].Value = team.teamName;
+                worksheet.Cells[0, i + 2].Value = "Day ";
                 j++;
                 foreach (Scheduler.Game game in team.gamesAllSeaason)
                 {
                     worksheet.Cells[j, i].Value = (j).ToString();
                     worksheet.Cells[j, i + 1].Value = finalSched.fields[getIndex(game.field)].name;
-                    worksheet.Cells[j, i + 2].Value = game.time;
-                    worksheet.Cells[j, i + 3].Value = finalSched.teams[game.team1].teamName;
-                    worksheet.Cells[j, i + 4].Value = finalSched.teams[game.team2].teamName;
+                    worksheet.Cells[j, i + 2].Value = "";
+                    worksheet.Cells[j, i + 3].Value = game.time;
+                    worksheet.Cells[j, i + 4].Value = finalSched.teams[game.team1].teamName;
+                    worksheet.Cells[j, i + 5].Value = finalSched.teams[game.team2].teamName;
                     j++;
                 }
                 i += width;
@@ -86,7 +88,7 @@ namespace Schedulerv1
                     foreach (Day day in week)
                     {
                         j = weekNum * height + 1;
-                        worksheet.Cells[j, i].Value = "Day " + dayNum.ToString(); ;
+                        worksheet.Cells[j, i].Value = "Day " + dayNum.ToString(); 
                         worksheet.Cells[j, i + 1].Value = finalSched.fields[fieldNum].name;
                         j++;
                         if (day.fields.Count > 0)
