@@ -12,35 +12,34 @@ function shuffleArray(array) {
 }
 
 const ePREF = {
-  DAY: 'day',
-  TIME: 'time',
-  FIELD: 'field',
-  NONE: 'none',
+  DAY: 0,
+  TIME: 1,
+  FIELD: 2,
+  NONE: -1,
 }
 
 const eDAY = {
-  MON : "monday",
-  TUES : "tuesday",
-  WED : "wednesday",
-  THUR : "thursday",
-  FRI : "friday",
-  SAT : "saturday",
-  SUN : "sunday",
-  NONE : "none"
+  MON : 0,
+  TUES : 1,
+  WED : 2,
+  THUR : 3,
+  FRI : 4,
+  SAT : 5,
+  SUN : 6,
+  NONE : -1
 }
 
-var numTeams = 12;
+var numTeams = 2;
 var numWeeks = 10;
-var maxGamesPerTeam = 20;
+var maxGamesPerTeam = 4;
 var numFields = 2;
 var weeklyGames = 8;
 var numPrefGames = 0;
 var totalGames = maxGamesPerTeam * numTeams;
 
 function Field() {
-  this.availability = [];
   this.name = "";
-  this.games = [];
+  this.days = [];
 }
 
 function Team() {
@@ -68,7 +67,7 @@ function Game() {
 
 function Day() {
   this.name = eDAY.NONE;
-  this.fields = [];
+  this.games = [];
 }
 
 function findInArr(arr, day){
@@ -78,6 +77,84 @@ function findInArr(arr, day){
     }
   }
   return false;
+}
+
+function findNextBestGame ( t , w ){
+  if (t.prefType === ePREF.DAY){
+    console.log("pref day: " + t.prefDay);
+    for (let g = 0; g < w[t.prefDay].games.length; g++){
+      console.log("checking game: " + w[t.prefDay].games[g]);
+      if (w[t.prefDay].games[g].homeTeam === -1) {
+        console.log("game found");
+        w[t.prefDay].games[g].homeTeam = t.number;
+        return w[t.prefDay].games[g];
+      }
+    }
+  } else if (t.prefType === ePREF.TIME){
+    console.log("pref time: " + t.prefTime);
+    for (let d = 0; d < 7; d++){
+      if (w[d].length <= 0)
+        continue;
+      for (let g = 0; g < w[d].games.length; g++){
+        if (w[d].games[g].homeTeam === -1 && w[d].games[g].timeSlot === t.prefTime) {
+          w[d].games[g].homeTeam = t.number;
+          return g;
+        }
+      }
+    }
+  } else if (t.prefType === ePREF.FIELD){
+    console.log("pref field: " + t.prefField);
+    for (let d = 0; d < 7; d++){
+      if (w[d].length <= 0)
+        continue;
+      for (let g = 0; g < w[d].games.length; g++){
+        if (w[d].games[g].homeTeam === -1 && w[d].games[g].fieldName === t.prefField) {
+          w[d].games[g].homeTeam = t.number;
+          return g;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function findTeamThatPrefsGame ( t , w ){
+  // if (t.prefType === ePREF.DAY){
+  //   console.log("pref day: " + t.prefDay);
+  //   for (let g = 0; g < w[t.prefDay].games.length; g++){
+  //     console.log("checking game: " + w[t.prefDay].games[g]);
+  //     if (w[t.prefDay].games[g].homeTeam === -1) {
+  //       console.log("game found");
+  //       w[t.prefDay].games[g].homeTeam = t.number;
+  //       return w[t.prefDay].games[g];
+  //     }
+  //   }
+  // } else if (t.prefType === ePREF.TIME){
+  //   console.log("pref time: " + t.prefTime);
+  //   for (let d = 0; d < 7; d++){
+  //     if (w[d].length <= 0)
+  //       continue;
+  //     for (let g = 0; g < w[d].games.length; g++){
+  //       if (w[d].games[g].homeTeam === -1 && w[d].games[g].timeSlot === t.prefTime) {
+  //         w[d].games[g].homeTeam = t.number;
+  //         return g;
+  //       }
+  //     }
+  //   }
+  // } else if (t.prefType === ePREF.FIELD){
+  //   console.log("pref field: " + t.prefField);
+  //   for (let d = 0; d < 7; d++){
+  //     if (w[d].length <= 0)
+  //       continue;
+  //     for (let g = 0; g < w[d].games.length; g++){
+  //       if (w[d].games[g].homeTeam === -1 && w[d].games[g].fieldName === t.prefField) {
+  //         w[d].games[g].homeTeam = t.number;
+  //         return g;
+  //       }
+  //     }
+  //   }
+  // }
+  // return null;
 }
 
 // object instantianions
@@ -111,66 +188,98 @@ for (let i = 0; i < numTeams; i++) {
 }
 
 fields[0] = {
-  availability : [eDAY.MON, eDAY.TUES],
   name : "field 0",
-  games : [],
+  days : [new Day(), new Day(), new Day(), new Day(), new Day(), new Day(), new Day()],
 }
-fields[0].games.push(new Game());
-fields[0].games[0].timeSlot = timeslots[0];
-fields[0].games[0].fieldName = fields[0].name;
-fields[0].games[0].time = "1pm";
-fields[0].games.push(new Game());
-fields[0].games[1].timeSlot = timeslots[0];
-fields[0].games[1].fieldName = fields[0].name;
-fields[0].games[1].time = "2pm";
+fields[0].days[0].games.push(new Game());
+fields[0].days[0].games[0].timeSlot = timeslots[0];
+fields[0].days[0].games[0].fieldName = fields[0].name;
+fields[0].days[0].games[0].time = "1pm";
+fields[0].days[0].games.push(new Game());
+fields[0].days[0].games[1].timeSlot = timeslots[0];
+fields[0].days[0].games[1].fieldName = fields[0].name;
+fields[0].days[0].games[1].time = "2pm";
+
+fields[0].days[1].games.push(new Game());
+fields[0].days[1].games[0].timeSlot = timeslots[0];
+fields[0].days[1].games[0].fieldName = fields[0].name;
+fields[0].days[1].games[0].time = "1pm";
+fields[0].days[1].games.push(new Game());
+fields[0].days[1].games[1].timeSlot = timeslots[0];
+fields[0].days[1].games[1].fieldName = fields[0].name;
+fields[0].days[1].games[1].time = "2pm";
 
 fields[1] = {
-  availability : [eDAY.MON, eDAY.WED],
   name : "field 1",
-  games : [],
+  days : [new Day(), new Day(), new Day(), new Day(), new Day(), new Day(), new Day()],
 }
-fields[1].games.push(new Game());
-fields[1].games[0].timeSlot = timeslots[1];
-fields[1].games[0].fieldName =fields[1].name;
-fields[1].games[0].time = "5pm";
-fields[1].games.push(new Game());
-fields[1].games[1].timeSlot = timeslots[1];
-fields[1].games[1].fieldName = fields[1].name;
-fields[1].games[1].time = "6pm";
+fields[1].days[0].games.push(new Game());
+fields[1].days[0].games[0].timeSlot = timeslots[0];
+fields[1].days[0].games[0].fieldName = fields[1].name;
+fields[1].days[0].games[0].time = "2pm";
+fields[1].days[0].games.push(new Game());
+fields[1].days[0].games[1].timeSlot = timeslots[1];
+fields[1].days[0].games[1].fieldName = fields[1].name;
+fields[1].days[0].games[1].time = "3pm";
+
+fields[1].days[2].games.push(new Game());
+fields[1].days[2].games[0].timeSlot = timeslots[0];
+fields[1].days[2].games[0].fieldName = fields[1].name;
+fields[1].days[2].games[0].time = "2pm";
+fields[1].days[2].games.push(new Game());
+fields[1].days[2].games[1].timeSlot = timeslots[1];
+fields[1].days[2].games[1].fieldName = fields[1].name;
+fields[1].days[2].games[1].time = "3pm";
 console.log("fields len: " + fields.length);
 
 // build the routine weekdays based on field schedules
 var week = [];
-for (var d in eDAY){
+var numGamesPerWeek = 0;
+for (let d = 0; d < 7; d++){
   week.push(new Day());
-  console.log(d);
+  week[week.length - 1].name = d;
+  console.log("-------- " + d);
   // for each field
   for (let fi = 0; fi < fields.length; fi++){
-    console.log(fields[fi].name);
-    console.log(fields[fi].games[0].time);
-    console.log(fields[fi].games[1].time);
-    if (findInArr(fields[fi].availability, d) && !findInArr(week, d)){
-      week.push(new Day());
-    }
-
-    // for each game that day
-    for (let g = 0; g < fields[fi].games.length; g++){
-      week.push(fields[fi].games[g]);
+    if (!fields[fi].days[d].games.length)
+      continue;
+    console.log("name: " + fields[fi].name);
+    console.log("g0 time: " + fields[fi].days[0].games[0].time);
+    console.log("g1 time: " + fields[fi].days[0].games[1].time);
+    
+    for (let g = 0; g < fields[fi].days[0].games.length; g++){
+      week[week.length - 1].games.push(fields[fi].days[0].games[g]);
+      numGamesPerWeek++;
     }
   }
 }
-
-
-
-
+console.log("games each week " + numGamesPerWeek);
 
 // for each week
-// for (let weekNum = 0; weekNum < numWeeks; weekNum ++){
-//   weekList.push(Week);
-  
-//   // add each day in the week that has games
 
-// }
+for (let weekNum = 0; weekNum < numWeeks; weekNum ++){
+  var newWeek = JSON.parse(JSON.stringify(week));
+  weekList.push(newWeek);
+}
+console.log("weeks " + weekList.length);
+console.log(weekList[0]);
+console.log("should be 2pm: " + weekList[0][0].games[1].time);
+weekList[0][0].games[1].time = "9am";
+console.log("should be 9pm: " + weekList[0][0].games[1].time);
+console.log("should be 2pm: " + weekList[1][0].games[1].time);
+
+// manually add some games
+// remove any blackout games/days
+
+// start filling games
+
+// week 1 scheduling
+var week1NumGames = 0;
+if (week1NumGames < numGamesPerWeek){ // change to while
+  var game = findNextBestGame(teams[nextPick[0]], weekList[0]);
+  console.log("pref game: " + game);
+  // var pref1 = findNextTeamPrefGame(game);
+}
 
 function App() {
   return (
