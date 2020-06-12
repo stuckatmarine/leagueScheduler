@@ -97,7 +97,7 @@ function findNextBestGame ( t , w ){
         continue;
       for (let g = 0; g < w[d].games.length; g++){
         if (w[d].games[g].homeTeam === -1 && w[d].games[g].timeSlot === t.prefTime) {
-          w[d].games[g].homeTeam = t.number;
+          // w[d].games[g].homeTeam = t.number;
           return g;
         }
       }
@@ -109,7 +109,7 @@ function findNextBestGame ( t , w ){
         continue;
       for (let g = 0; g < w[d].games.length; g++){
         if (w[d].games[g].homeTeam === -1 && w[d].games[g].fieldName === t.prefField) {
-          w[d].games[g].homeTeam = t.number;
+          // w[d].games[g].homeTeam = t.number;
           return g;
         }
       }
@@ -118,43 +118,31 @@ function findNextBestGame ( t , w ){
   return null;
 }
 
-function findTeamThatPrefsGame ( t , w ){
-  // if (t.prefType === ePREF.DAY){
-  //   console.log("pref day: " + t.prefDay);
-  //   for (let g = 0; g < w[t.prefDay].games.length; g++){
-  //     console.log("checking game: " + w[t.prefDay].games[g]);
-  //     if (w[t.prefDay].games[g].homeTeam === -1) {
-  //       console.log("game found");
-  //       w[t.prefDay].games[g].homeTeam = t.number;
-  //       return w[t.prefDay].games[g];
-  //     }
-  //   }
-  // } else if (t.prefType === ePREF.TIME){
-  //   console.log("pref time: " + t.prefTime);
-  //   for (let d = 0; d < 7; d++){
-  //     if (w[d].length <= 0)
-  //       continue;
-  //     for (let g = 0; g < w[d].games.length; g++){
-  //       if (w[d].games[g].homeTeam === -1 && w[d].games[g].timeSlot === t.prefTime) {
-  //         w[d].games[g].homeTeam = t.number;
-  //         return g;
-  //       }
-  //     }
-  //   }
-  // } else if (t.prefType === ePREF.FIELD){
-  //   console.log("pref field: " + t.prefField);
-  //   for (let d = 0; d < 7; d++){
-  //     if (w[d].length <= 0)
-  //       continue;
-  //     for (let g = 0; g < w[d].games.length; g++){
-  //       if (w[d].games[g].homeTeam === -1 && w[d].games[g].fieldName === t.prefField) {
-  //         w[d].games[g].homeTeam = t.number;
-  //         return g;
-  //       }
-  //     }
-  //   }
-  // }
-  // return null;
+function findTeamThatPrefsGame ( teamIdx, game){
+  for (var n in nextPick){
+    if (teamIdx === n)
+      continue;
+
+    if (teams[n].prefType === ePREF.DAY && teams[n].prefDay == game.day){
+      console.log("team2 pref found: " + teams[n].prefType + ", teamIdx: " + n);
+      return n;
+    }
+    else if (teams[n].prefType === ePREF.TIME && teams[n].prefTime == game.timeSlot){
+      console.log("team2 pref found: " + teams[n].prefType + ", teamIdx: " + n);
+      return n;
+    }
+    else if (teams[n].prefType === ePREF.DAY && teams[n].prefDay == game.day){
+      console.log("team2 pref found: " + teams[n].prefType + ", teamIdx: " + n);
+      return n;
+    }
+  }
+  return null;
+}
+
+function fillGame(team1, team2, game){
+  game.homeTeam = team1;
+  game.awayTeam = team2;
+  console.log("Game filled: " + game);
 }
 
 // object instantianions
@@ -263,10 +251,12 @@ for (let weekNum = 0; weekNum < numWeeks; weekNum ++){
 }
 console.log("weeks " + weekList.length);
 console.log(weekList[0]);
-console.log("should be 2pm: " + weekList[0][0].games[1].time);
-weekList[0][0].games[1].time = "9am";
-console.log("should be 9pm: " + weekList[0][0].games[1].time);
-console.log("should be 2pm: " + weekList[1][0].games[1].time);
+
+// confirm days are constructed individually
+console.assert(weekList[0][0].games[1].time === "2pm");
+weekList[0][0].games[1].time = "9pm";
+console.assert(weekList[0][0].games[1].time === "9pm");
+console.assert(weekList[1][0].games[1].time === "2pm");
 
 // manually add some games
 // remove any blackout games/days
@@ -276,9 +266,23 @@ console.log("should be 2pm: " + weekList[1][0].games[1].time);
 // week 1 scheduling
 var week1NumGames = 0;
 if (week1NumGames < numGamesPerWeek){ // change to while
+
+  // find a game an a team that preferes it
   var game = findNextBestGame(teams[nextPick[0]], weekList[0]);
   console.log("pref game: " + game);
-  // var pref1 = findNextTeamPrefGame(game);
+  if (game !== undefined){
+    var team1 = nextPick.shift();
+    nextPick.push(team1);
+    var team2 = findTeamThatPrefsGame(team1, game);
+
+    if (team2){ // two teams that match pref found
+      fillGame(team1, team2, game);
+    }
+    else{ // default to last picking team with availability for team1/gameSlot
+      ;
+
+    }
+  }
 }
 
 function App() {
