@@ -3,6 +3,13 @@ import logo from './logo.svg';
 import './App.css';
 import Dashboard from './components/Dashboard';
 import NavBar from './components/NavBar';
+import TextForm from './components/TextForm';
+import { Container, Grid, Segment, Button } from 'semantic-ui-react';
+import IntForm from './components/IntForm';
+import IntDropdown from './components/IntDropdown';
+import ButtonFloated from './components/ButtonFloated';
+import FieldSegment from './components/FieldSegemt';
+import TeamSegment from './components/TeamSegment';
 
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
@@ -288,7 +295,86 @@ if (week1NumGames < numGamesPerWeek){ // change to while
 function App() {
   return (
     <div className="App">
-      <NavBar></NavBar>
+      {/* <NavBar></NavBar> */}
+      <Segment>
+        
+        <Segment>
+          <h2>League General Info</h2>
+          <Grid columns={3} divided>
+            <Grid.Row>
+              <Grid.Column>
+                <h3>League Name</h3>
+                <TextForm dflt={'Enter Name'}></TextForm>
+              </Grid.Column>
+              <Grid.Column>
+                <h3>Num Weeks</h3>
+                <IntDropdown rangeLow={2} rangeHigh={6}></IntDropdown>
+              </Grid.Column>
+              <Grid.Column>
+                <h3>Double Headers</h3>
+                <ButtonFloated></ButtonFloated>
+              </Grid.Column>
+            </Grid.Row>
+          </Grid>
+
+          <Grid columns={3} divided>
+            <Grid.Row>
+              <Grid.Column>
+                <h3>Num Teams</h3>
+                <IntDropdown rangeLow={2} rangeHigh={6}></IntDropdown>
+              </Grid.Column>
+              <Grid.Column>
+                <h3>Max Games</h3>
+                <IntDropdown rangeLow={2} rangeHigh={6}></IntDropdown>
+              </Grid.Column>
+              <Grid.Column>
+                <h3>Num Fields</h3>
+                <IntDropdown rangeLow={2} rangeHigh={6}></IntDropdown>
+                
+              </Grid.Column>
+            </Grid.Row>
+
+            <Grid.Row>
+              <Grid.Column></Grid.Column>
+              <Grid.Column>
+                <Button color='blue' position='center'>Load Next</Button>
+              </Grid.Column>
+              <Grid.Column></Grid.Column>
+            </Grid.Row>
+            
+          </Grid>
+        </Segment>
+
+        <TeamSegment number={4}>
+          sdfs
+        </TeamSegment>
+
+
+        <FieldSegment number={4}>
+          {/* <h2>Field Info</h2>
+          <TextForm dflt={'Team Name'}></TextForm>
+          <TextForm></TextForm>
+
+          <Grid columns={3}>
+            <Grid.Row>
+              <Grid.Column>
+                <h3>Num Teams</h3>
+                <IntDropdown rangeLow={2} rangeHigh={6}></IntDropdown>
+              </Grid.Column>
+              <Grid.Column>
+                <h3>Max Games</h3>
+                <IntDropdown rangeLow={2} rangeHigh={6}></IntDropdown>
+              </Grid.Column>
+              <Grid.Column>
+                <Button color='blue'>Load Next</Button>
+              </Grid.Column>
+            </Grid.Row>
+          </Grid>  */}
+        </FieldSegment>
+        
+        
+        
+      </Segment>
 
       <Dashboard></Dashboard>      
       
